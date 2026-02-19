@@ -52,7 +52,7 @@ if($role == 'admin' || $role == 'employer'){
     .topbar{
         display:flex;
         align-items:center;
-        justify-content:space-between;
+        justify-cont    ent:space-between;
         background:var(--blue);
         color:white;
         padding:22px 40px;

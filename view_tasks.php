@@ -11,9 +11,7 @@ $viewer_id   = $_SESSION['user_id'];
 $role        = $_SESSION['role'];
 $employee_id = intval($_GET['id']);
 
-/* ---------- SECURITY CHECK ---------- */
-
-/* Employer can only access their employees */
+/* SECURITY CHECK */
 if($role == 'employer'){
     $check = $conn->prepare("SELECT id FROM users WHERE id=? AND employer_id=?");
     $check->bind_param("ii",$employee_id,$viewer_id);
@@ -25,53 +23,13 @@ if($role == 'employer'){
     }
 }
 
-/* Employee can only access himself */
 if($role == 'employee' && $viewer_id != $employee_id){
     die("Access Denied");
 }
 
-/* ---------- ADD TASK (EMPLOYER ONLY) ---------- */
-if(isset($_POST['add_task']) && $role == 'employer'){
-
-    $title    = $_POST['title'];
-    $desc     = $_POST['description'];
-    $deadline = $_POST['deadline'];
-
-    $stmt = $conn->prepare(
-        "INSERT INTO tasks (title,description,assigned_by,assigned_to,deadline)
-         VALUES (?,?,?,?,?)"
-    );
-    $stmt->bind_param("ssiis",$title,$desc,$viewer_id,$employee_id,$deadline);
-    $stmt->execute();
-}
-
-/* ---------- UPDATE STATUS (EMPLOYEE ONLY) ---------- */
-if(isset($_POST['update_task']) && $role == 'employee'){
-
-    $task_id = intval($_POST['task_id']);
-    $status  = $_POST['status'];
-    $remark  = $_POST['remark'];
-
-    $stmt = $conn->prepare(
-        "UPDATE tasks SET status=? WHERE id=? AND assigned_to=?"
-    );
-    $stmt->bind_param("sii",$status,$task_id,$viewer_id);
-    $stmt->execute();
-
-    if(!empty($remark)){
-        $rep = $conn->prepare(
-            "INSERT INTO task_reports (task_id,employee_id,report)
-             VALUES (?,?,?)"
-        );
-        $rep->bind_param("iis",$task_id,$viewer_id,$remark);
-        $rep->execute();
-    }
-}
-
-/* ---------- LOAD EMPLOYEE ---------- */
+/* LOAD DATA */
 $user  = $conn->query("SELECT name FROM users WHERE id=$employee_id")->fetch_assoc();
 
-/* ---------- LOAD TASKS ---------- */
 $tasks = $conn->query(
     "SELECT * FROM tasks WHERE assigned_to=$employee_id ORDER BY created_at DESC"
 );
@@ -88,29 +46,24 @@ $tasks = $conn->query(
     --cream:#f7f6f2;
 }
 
-/* PAGE */
 body{
     margin:0;
-    font-family:Helvetica, Arial, sans-serif;
+    font-family:Helvetica, Arial;
     background:var(--cream);
 }
 
-/* HEADER */
 .top{
     background:var(--blue);
     color:white;
     padding:20px 40px;
     font-size:20px;
-    letter-spacing:2px;
 }
 
-/* CONTENT */
 .container{
     width:75%;
     margin:50px auto;
 }
 
-/* CARD */
 .card{
     border:4px solid var(--blue);
     margin-bottom:35px;
@@ -124,10 +77,7 @@ body{
     padding:14px 22px;
 }
 
-/* FORM */
-.content{
-    padding:22px;
-}
+.content{ padding:22px; }
 
 input,textarea,select{
     width:100%;
@@ -140,12 +90,10 @@ button{
     background:var(--red);
     color:white;
     border:none;
-    padding:12px 20px;
-    margin-top:12px;
+    padding:10px 16px;
     cursor:pointer;
 }
 
-/* TASK ROW */
 .task{
     border-top:2px solid #eee;
     padding:24px;
@@ -154,44 +102,21 @@ button{
     gap:30px;
 }
 
-/* LEFT SIDE */
 .task-info{ flex:1; }
-
-.task-title{
-    font-size:18px;
-    font-weight:bold;
-}
-
-.meta{
-    font-size:13px;
-    color:#666;
-    margin-top:5px;
-}
-
-/* STATUS */
-.status-row{
-    display:flex;
-    align-items:center;
-    margin-top:12px;
-    font-weight:bold;
-}
 
 .status-light{
     width:18px;
     height:18px;
     border-radius:50%;
-    margin-right:10px;
+    display:inline-block;
+    margin-right:8px;
 }
 
-/* Traffic colors */
 .not_started{ background:#FF2B2B; }
 .in_progress{ background:#FFC107; }
 .completed{ background:#28A745; }
 
-/* RIGHT SIDE */
-.task-actions{
-    width:220px;
-}
+.task-actions{ width:240px; }
 </style>
 </head>
 
@@ -200,17 +125,28 @@ button{
 <div class="top">TASKS → <?php echo htmlspecialchars($user['name']); ?></div>
 
 <div class="container">
+    <?php if($role == 'employer'){ ?>
+<a href="employee_analytics.php?id=<?php echo $employee_id; ?>"
+style="display:inline-block;margin-bottom:20px;
+background:#0047FF;color:white;padding:10px 18px;text-decoration:none;">
+View Analytics
+</a>
+<?php } ?>
 
-<!-- EMPLOYER ASSIGN FORM -->
+
+<!-- EMPLOYER ADD TASK -->
 <?php if($role == 'employer'){ ?>
 <div class="card">
-<h3>Assign New Task</h3>
+<h3>Assign Task</h3>
 <div class="content">
-<form method="POST">
+<form method="POST" action="actions/add_task.php">
+<input type="hidden" name="employee_id" value="<?php echo $employee_id; ?>">
+
 <input type="text" name="title" placeholder="Task Title" required>
-<textarea name="description" placeholder="Description"></textarea>
+<textarea name="description"></textarea>
 <input type="date" name="deadline">
-<button name="add_task">Assign Task</button>
+
+<button type="submit">Assign</button>
 </form>
 </div>
 </div>
@@ -224,20 +160,18 @@ button{
 <div class="task">
 
 <div class="task-info">
-<div class="task-title"><?php echo htmlspecialchars($t['title']); ?></div>
+<b><?php echo htmlspecialchars($t['title']); ?></b><br>
+<?php echo nl2br(htmlspecialchars($t['description'])); ?><br>
+Deadline: <?php echo $t['deadline'] ?: '—'; ?><br>
 
-<div class="meta"><?php echo nl2br(htmlspecialchars($t['description'])); ?></div>
-<div class="meta">Deadline: <?php echo $t['deadline'] ?: '—'; ?></div>
-
-<div class="status-row">
-<div class="status-light <?php echo $t['status']; ?>"></div>
+<span class="status-light <?php echo $t['status']; ?>"></span>
 <?php echo strtoupper(str_replace('_',' ',$t['status'])); ?>
 </div>
-</div>
+
+<div class="task-actions">
 
 <?php if($role == 'employee'){ ?>
-<div class="task-actions">
-<form method="POST">
+<form method="POST" action="actions/update_task.php">
 <input type="hidden" name="task_id" value="<?php echo $t['id']; ?>">
 
 <select name="status">
@@ -246,12 +180,26 @@ button{
 <option value="completed">Completed</option>
 </select>
 
-<textarea name="remark" placeholder="Progress update"></textarea>
-
-<button name="update_task">Update</button>
+<textarea name="remark"></textarea>
+<button>Update</button>
 </form>
-</div>
 <?php } ?>
+
+<?php if($role == 'employer'){ ?>
+<form method="POST" action="actions/edit_task.php">
+<input type="hidden" name="task_id" value="<?php echo $t['id']; ?>">
+<input type="text" name="title" value="<?php echo htmlspecialchars($t['title']); ?>">
+<input type="date" name="deadline" value="<?php echo $t['deadline']; ?>">
+<button>Save</button>
+</form>
+
+<br>
+
+<a href="actions/delete_task.php?task_id=<?php echo $t['id']; ?>"
+onclick="return confirm('Delete task?')">Delete</a>
+<?php } ?>
+
+</div>
 
 </div>
 <?php } ?>
