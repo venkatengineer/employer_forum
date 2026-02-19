@@ -247,6 +247,30 @@ if($role == 'admin' || $role == 'employer'){
     @media (max-width: 768px) {
         .topbar { padding: 0 20px; font-size: 0.9rem; letter-spacing: 2px; }
         .wrapper { width: 95%; margin: 30px auto; }
+        .action-link { font-size: 0.8rem; padding: 10px 18px; }
+    }
+
+    /* ===== ACTION LINKS ===== */
+    .action-link {
+        display: inline-block;
+        margin-bottom: 30px;
+        background: var(--blue);
+        color: var(--white, #FFFFFF);
+        padding: 14px 28px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        border: 3px solid var(--ink);
+        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .action-link:hover {
+        background: var(--ink);
+        color: #FFFFFF;
+        transform: translateY(-3px);
+        box-shadow: 6px 6px 0px var(--blue);
     }
     </style>
 
@@ -265,6 +289,9 @@ if($role == 'admin' || $role == 'employer'){
 
     <div class="wrapper">
 
+    <?php if($role == 'employer'){ ?>
+    <a href="workload.php" class="action-link">📊 View Team Workload</a>
+    <?php } ?>
 
     <?php if($role != 'employee'){ ?>
 
